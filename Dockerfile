@@ -1,22 +1,34 @@
-FROM python:3.7.9-alpine
+FROM python:3.9.5-alpine
 
-# Setup environment variables
-ENV PORT=8080 \
+# Build arguments
+ARG FLASK_DEBUG=False \
+    GROUP=nogroup \
+    USER=nobody \
+    WORKDIR=/usr/src
+
+# Environment variables
+ENV FLASK_APP=$WORKDIR/run.py \
+    FLASK_DEBUG=$FLASK_DEBUG \
     HOST=0.0.0.0 \
-    FLASK_APP=/app/run.py \
+    PORT=8080 \
     PYTHONUNBUFFERED=True
-ARG FLASK_DEBUG=False
-ENV FLASK_DEBUG=$FLASK_DEBUG
 
-# Setup file system
-WORKDIR /app
-COPY app/ /app
+# App's file system
+WORKDIR $WORKDIR
+RUN chown $USER:$GROUP $WORKDIR
+COPY --chown=$USER:$GROUP app/ $WORKDIR
 
-# Upgrade pip & install python packages
-RUN pip install --upgrade pip --requirement /app/requirements.txt
+# Install OS packages
+RUN apk add --no-cache curl
 
-# Indicate which port to expose
+# Install python packages
+RUN pip install --upgrade pip --requirement requirements.txt
+
+# Expose app's port
 EXPOSE $PORT
 
-# Start app server
+# Run rootless
+USER $USER:$GROUP
+
+# Start app
 CMD flask run --host=$HOST --port=$PORT
